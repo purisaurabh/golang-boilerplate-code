@@ -4,6 +4,22 @@ DB_USER=postgres
 ALL_PACKAGES=$(shell go list ./... | grep -v "vendor")
 APP_EXECUTABLE="out/golang-boilerplate"
 DB_PORT=5432
+MAIN_FILE=cmd/main.go
+
+run:
+	go run $(MAIN_FILE)
+
+# Usage: make create-migration name=<migration_name>
+create-migration:
+	go run $(MAIN_FILE) create-migration $(name)
+
+# Usage: run the migration 
+migrate:
+	go run $(MAIN_FILE) migrate
+
+# Usage: make rollback version=<migration_version>
+rollback:
+	go run $(MAIN_FILE) rollback $(version)
 
 copy-config:
 	cp application.yml.sample application.yml
