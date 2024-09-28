@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -9,14 +10,7 @@ import (
 	"github.com/purisaurabh/database-connection/config"
 )
 
-type Repository interface {
-}
-
-type RepositoryStruct struct {
-	DB *sql.DB
-}
-
-func Init() (RepositoryStruct, error) {
+func Init(ctx context.Context) (RepositoryStruct, error) {
 	dbConfig := config.Database()
 	db, err := sql.Open(dbConfig.Driver(), dbConfig.ConnectionURL())
 	if err != nil {
