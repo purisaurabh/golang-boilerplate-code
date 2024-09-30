@@ -7,7 +7,7 @@ DB_PORT=5432
 MAIN_FILE=cmd/main.go
 
 run:
-	go run $(MAIN_FILE)
+	go run $(MAIN_FILE) start
 
 # Usage: make create-migration name=<migration_name>
 create-migration:
