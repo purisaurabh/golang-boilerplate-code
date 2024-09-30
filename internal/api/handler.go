@@ -93,3 +93,25 @@ func UpdateProfileData(ctx context.Context, service app.Service) func(http.Respo
 		SuccessResponse(w, http.StatusOK, Response{Message: "Data updated successfully"})
 	}
 }
+
+func DeleteProfileData(ctx context.Context, service app.Service) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := GetIDFromRequest(r)
+		if err != nil {
+			fmt.Println("Error getting id from request:", err)
+			ErrorResponse(w, http.StatusBadRequest, Response{Message: "Error getting id from request"})
+			return
+		}
+
+		// Call service
+		err = service.DeleteProfileData(ctx, id)
+		if err != nil {
+			fmt.Println("Error calling service:", err)
+			ErrorResponse(w, http.StatusInternalServerError, Response{Message: "Error deleting data"})
+			return
+		}
+
+		// Encode response
+		SuccessResponse(w, http.StatusOK, Response{Message: "Data deleted successfully"})
+	}
+}

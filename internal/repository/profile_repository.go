@@ -13,6 +13,7 @@ type Repository interface {
 	PostProfileData(context.Context, PostProfileRepo) error
 	ListProfileData(context.Context) ([]ListProfileData, error)
 	UpdateProfileData(context.Context, UpdateProfileData) error
+	DeleteProfileData(context.Context, int) error
 }
 
 type RepositoryStruct struct {
@@ -100,6 +101,33 @@ func (r *RepositoryStruct) UpdateProfileData(ctx context.Context, req UpdateProf
 	if rowsAffected == 0 {
 		fmt.Println("No rows affected")
 		return err
+	}
+
+	return nil
+}
+
+func (r *RepositoryStruct) DeleteProfileData(ctx context.Context, id int) error {
+	deleteQuery, args, err := squirrel.Delete("profiles").Where(squirrel.Eq{"id": id}).ToSql()
+	if err != nil {
+		fmt.Println("Error in building delete query:", err)
+		return err
+	}
+
+	result, err := r.DB.ExecContext(ctx, deleteQuery, args...)
+	if err != nil {
+		fmt.Println("Error in executing delete query:", err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println("Error in getting rows affected:", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		fmt.Println("No rows affected")
+		return nil
 	}
 
 	return nil

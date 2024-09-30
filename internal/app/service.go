@@ -13,6 +13,7 @@ type Service interface {
 	PostProfileData(context.Context, specs.PostProfile) error
 	ListProfileData(context.Context) ([]specs.ListProfileResponse, error)
 	UpdateProfileData(context.Context, int, specs.UpdateProfile) error
+	DeleteProfileData(context.Context, int) error
 }
 
 type ServiceStruct struct {
@@ -76,6 +77,15 @@ func (s *ServiceStruct) UpdateProfileData(ctx context.Context, id int, req specs
 	}
 
 	err := s.Repo.UpdateProfileData(ctx, updateProfileData)
+	if err != nil {
+		fmt.Println("Error in calling repository:", err)
+		return err
+	}
+	return nil
+}
+
+func (s *ServiceStruct) DeleteProfileData(ctx context.Context, id int) error {
+	err := s.Repo.DeleteProfileData(ctx, id)
 	if err != nil {
 		fmt.Println("Error in calling repository:", err)
 		return err
