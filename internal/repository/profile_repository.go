@@ -10,24 +10,59 @@ import (
 )
 
 type Repository interface {
-	PostProfileData(context.Context, PostProfileRepo) error
-	ListProfileData(context.Context) ([]ListProfileData, error)
-	UpdateProfileData(context.Context, UpdateProfileData) error
-	DeleteProfileData(context.Context, int) error
+	PostProfileData(context.Context, *sql.Tx, PostProfileRepo) error
+	ListProfileData(context.Context, *sql.Tx) ([]ListProfileData, error)
+	UpdateProfileData(context.Context, *sql.Tx, UpdateProfileData) error
+	DeleteProfileData(context.Context, *sql.Tx, int) error
+	BeginTransaction(context.Context) (*sql.Tx, error)
+	HandlerTransaction(context.Context, *sql.Tx, error) error
 }
 
 type RepositoryStruct struct {
 	DB *sql.DB
 }
 
-func (r *RepositoryStruct) PostProfileData(ctx context.Context, req PostProfileRepo) error {
+// Transaction Part
+func (r *RepositoryStruct) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
+	tx, err := r.DB.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		fmt.Println("Error in beginning transaction:", err)
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (r *RepositoryStruct) HandlerTransaction(ctx context.Context, tx *sql.Tx, inComingErr error) error {
+	if inComingErr != nil {
+		fmt.Println("Error in incoming error:", inComingErr)
+		err := tx.Rollback()
+		if err != nil {
+			fmt.Println("Error in rolling back transaction:", err)
+			return err
+		}
+		return inComingErr
+	}
+	err := tx.Commit()
+	if err != nil {
+		fmt.Println("Error in committing transaction in handler:", err)
+		return err
+	}
+	return nil
+}
+
+func (r *RepositoryStruct) PostProfileData(ctx context.Context, tx *sql.Tx, req PostProfileRepo) error {
 	insertQuery, args, err := squirrel.Insert("profiles").Columns(constants.PostRequestColumns...).Values(req.Name, req.Email, req.Mobile, req.Created_At, req.Updated_At).ToSql()
 	if err != nil {
 		fmt.Println("Error in building insert query:", err)
 		return err
 	}
 
-	result, err := r.DB.ExecContext(ctx, insertQuery, args...)
+	if tx == nil {
+		fmt.Println("Transaction is nil")
+		return fmt.Errorf("internal server error : transaction is nil")
+	}
+
+	result, err := tx.ExecContext(ctx, insertQuery, args...)
 	if err != nil {
 		fmt.Println("Error in executing insert query:", err)
 		return err
@@ -47,7 +82,7 @@ func (r *RepositoryStruct) PostProfileData(ctx context.Context, req PostProfileR
 	return nil
 }
 
-func (r *RepositoryStruct) ListProfileData(ctx context.Context) ([]ListProfileData, error) {
+func (r *RepositoryStruct) ListProfileData(ctx context.Context, tx *sql.Tx) ([]ListProfileData, error) {
 	var resp []ListProfileData
 	query, args, err := squirrel.Select(constants.ListRequestColumns...).From("profiles").ToSql()
 	if err != nil {
@@ -55,7 +90,7 @@ func (r *RepositoryStruct) ListProfileData(ctx context.Context) ([]ListProfileDa
 		return resp, err
 	}
 
-	rows, err := r.DB.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		fmt.Println("Error in executing select query:", err)
 		return resp, err
@@ -74,7 +109,7 @@ func (r *RepositoryStruct) ListProfileData(ctx context.Context) ([]ListProfileDa
 	return resp, nil
 }
 
-func (r *RepositoryStruct) UpdateProfileData(ctx context.Context, req UpdateProfileData) error {
+func (r *RepositoryStruct) UpdateProfileData(ctx context.Context, tx *sql.Tx, req UpdateProfileData) error {
 	updateQuery, args, err := squirrel.Update("profiles").SetMap(map[string]interface{}{
 		"name":       req.Name,
 		"email":      req.Email,
@@ -86,7 +121,12 @@ func (r *RepositoryStruct) UpdateProfileData(ctx context.Context, req UpdateProf
 		return err
 	}
 
-	result, err := r.DB.ExecContext(ctx, updateQuery, args...)
+	if tx == nil {
+		fmt.Println("Transaction is nil")
+		return fmt.Errorf("internal server error : transaction is nil")
+	}
+
+	result, err := tx.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
 		fmt.Println("Error in executing update query:", err)
 		return err
@@ -106,14 +146,19 @@ func (r *RepositoryStruct) UpdateProfileData(ctx context.Context, req UpdateProf
 	return nil
 }
 
-func (r *RepositoryStruct) DeleteProfileData(ctx context.Context, id int) error {
+func (r *RepositoryStruct) DeleteProfileData(ctx context.Context, tx *sql.Tx, id int) error {
 	deleteQuery, args, err := squirrel.Delete("profiles").Where(squirrel.Eq{"id": id}).ToSql()
 	if err != nil {
 		fmt.Println("Error in building delete query:", err)
 		return err
 	}
 
-	result, err := r.DB.ExecContext(ctx, deleteQuery, args...)
+	if tx == nil {
+		fmt.Println("Transaction is nil")
+		return fmt.Errorf("internal server error : transaction is nil")
+	}
+
+	result, err := tx.ExecContext(ctx, deleteQuery, args...)
 	if err != nil {
 		fmt.Println("Error in executing delete query:", err)
 		return err

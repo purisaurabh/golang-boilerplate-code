@@ -26,7 +26,22 @@ func NewService(repo repository.Repository) *ServiceStruct {
 	}
 }
 
-func (s *ServiceStruct) PostProfileData(ctx context.Context, req specs.PostProfile) error {
+func (s *ServiceStruct) PostProfileData(ctx context.Context, req specs.PostProfile) (err error) {
+	tx, err := s.Repo.BeginTransaction(ctx)
+	if err != nil {
+		fmt.Println("Error in beginning transaction in service:", err)
+		return err
+	}
+
+	defer func() {
+		txErr := s.Repo.HandlerTransaction(ctx, tx, err)
+		if err != nil {
+			fmt.Println("Error in handling transaction in service:", err)
+			err = txErr
+			return
+		}
+	}()
+
 	now := time.Now().Unix()
 	postProfileRepo := repository.PostProfileRepo{
 		Name:       req.Profiles.Name,
@@ -36,7 +51,7 @@ func (s *ServiceStruct) PostProfileData(ctx context.Context, req specs.PostProfi
 		Updated_At: now,
 	}
 
-	err := s.Repo.PostProfileData(ctx, postProfileRepo)
+	err = s.Repo.PostProfileData(ctx, tx, postProfileRepo)
 	if err != nil {
 		fmt.Println("Error in calling repository:", err)
 		return err
@@ -44,8 +59,23 @@ func (s *ServiceStruct) PostProfileData(ctx context.Context, req specs.PostProfi
 	return nil
 }
 
-func (s *ServiceStruct) ListProfileData(ctx context.Context) ([]specs.ListProfileResponse, error) {
-	resp, err := s.Repo.ListProfileData(ctx)
+func (s *ServiceStruct) ListProfileData(ctx context.Context) (list []specs.ListProfileResponse, err error) {
+	tx, err := s.Repo.BeginTransaction(ctx)
+	if err != nil {
+		fmt.Println("Error in beginning transaction in service:", err)
+		return nil, err
+	}
+
+	defer func() {
+		txErr := s.Repo.HandlerTransaction(ctx, tx, err)
+		if err != nil {
+			fmt.Println("Error in handling transaction in service:", err)
+			err = txErr
+			return
+		}
+	}()
+
+	resp, err := s.Repo.ListProfileData(ctx, tx)
 	if err != nil {
 		fmt.Println("Error in calling repository:", err)
 		return []specs.ListProfileResponse{}, err
@@ -66,7 +96,22 @@ func (s *ServiceStruct) ListProfileData(ctx context.Context) ([]specs.ListProfil
 	return response, nil
 }
 
-func (s *ServiceStruct) UpdateProfileData(ctx context.Context, id int, req specs.UpdateProfile) error {
+func (s *ServiceStruct) UpdateProfileData(ctx context.Context, id int, req specs.UpdateProfile) (err error) {
+	tx, err := s.Repo.BeginTransaction(ctx)
+	if err != nil {
+		fmt.Println("Error in beginning transaction in service:", err)
+		return err
+	}
+
+	defer func() {
+		txErr := s.Repo.HandlerTransaction(ctx, tx, err)
+		if err != nil {
+			fmt.Println("Error in handling transaction in service:", err)
+			err = txErr
+			return
+		}
+	}()
+
 	now := time.Now().Unix()
 	updateProfileData := repository.UpdateProfileData{
 		ID:         id,
@@ -76,7 +121,7 @@ func (s *ServiceStruct) UpdateProfileData(ctx context.Context, id int, req specs
 		Updated_At: now,
 	}
 
-	err := s.Repo.UpdateProfileData(ctx, updateProfileData)
+	err = s.Repo.UpdateProfileData(ctx, tx, updateProfileData)
 	if err != nil {
 		fmt.Println("Error in calling repository:", err)
 		return err
@@ -84,8 +129,23 @@ func (s *ServiceStruct) UpdateProfileData(ctx context.Context, id int, req specs
 	return nil
 }
 
-func (s *ServiceStruct) DeleteProfileData(ctx context.Context, id int) error {
-	err := s.Repo.DeleteProfileData(ctx, id)
+func (s *ServiceStruct) DeleteProfileData(ctx context.Context, id int) (err error) {
+	tx, err := s.Repo.BeginTransaction(ctx)
+	if err != nil {
+		fmt.Println("Error in beginning transaction in service:", err)
+		return err
+	}
+
+	defer func() {
+		txErr := s.Repo.HandlerTransaction(ctx, tx, err)
+		if err != nil {
+			fmt.Println("Error in handling transaction in service:", err)
+			err = txErr
+			return
+		}
+	}()
+
+	err = s.Repo.DeleteProfileData(ctx, tx, id)
 	if err != nil {
 		fmt.Println("Error in calling repository:", err)
 		return err
